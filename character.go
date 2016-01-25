@@ -1,6 +1,6 @@
 package main
 
-import "github.com/gophergala2016/gophette/resource"
+import "github.com/gonutz/gophette/resource"
 
 type CharacterParams struct {
 	AccelerationX     int

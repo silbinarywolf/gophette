@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/gophergala2016/gophette/resource"
+	"github.com/gophergala2016/gonutz/resource"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/sdl_image"
 	"github.com/veandco/go-sdl2/sdl_mixer"
