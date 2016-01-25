@@ -17,4 +17,5 @@ type Sound interface {
 type AssetLoader interface {
 	LoadImage(id string) Image
 	LoadSound(id string) Sound
+	LoadRectangle(id string) Rectangle
 }

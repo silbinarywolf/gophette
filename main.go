@@ -1,8 +1,10 @@
-// +build !windows
+// -+build !windows
 
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"github.com/gonutz/blob"
 	"github.com/veandco/go-sdl2/sdl"
@@ -96,7 +98,7 @@ func main() {
 						game.HandleInput(InputEvent{GoLeft, true, charIndex})
 					case sdl.K_RIGHT:
 						game.HandleInput(InputEvent{GoRight, true, charIndex})
-					case sdl.K_UP:
+					case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
 						game.HandleInput(InputEvent{Jump, true, charIndex})
 					case sdl.K_ESCAPE:
 						game.HandleInput(InputEvent{QuitGame, true, charIndex})
@@ -108,7 +110,7 @@ func main() {
 					game.HandleInput(InputEvent{GoLeft, false, charIndex})
 				case sdl.K_RIGHT:
 					game.HandleInput(InputEvent{GoRight, false, charIndex})
-				case sdl.K_UP:
+				case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
 					game.HandleInput(InputEvent{Jump, false, charIndex})
 				case sdl.K_F11:
 					if fullscreen {
@@ -244,6 +246,21 @@ func (l *sdlAssetLoader) LoadSound(id string) Sound {
 	l.sounds[id] = sound
 
 	return sound
+}
+
+func (l *sdlAssetLoader) LoadRectangle(id string) Rectangle {
+	data, found := l.resources.GetByID(id)
+	if !found {
+		panic("unknown rectangle resource: " + id)
+	}
+	reader := bytes.NewReader(data)
+	var r rect
+	check(binary.Read(reader, binary.LittleEndian, &r))
+	return Rectangle{int(r.X), int(r.Y), int(r.W), int(r.H)}
+}
+
+type rect struct {
+	X, Y, W, H int32
 }
 
 func (l *sdlAssetLoader) close() {

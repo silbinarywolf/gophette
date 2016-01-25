@@ -1,3 +1,5 @@
+// +build ignore
+
 package main
 
 import (
@@ -94,8 +96,9 @@ func main() {
 	defer device.Release()
 
 	camera := newWindowCamera(window.GetSize())
+	graphics := newWindowsGraphics(device, camera)
 
-	assetLoader := newWindowsAssetLoader(device, camera)
+	assetLoader := newWindowsAssetLoader(device, graphics, camera)
 	defer assetLoader.close()
 
 	// charIndex selects which character is being controlled by the user, for
@@ -115,7 +118,7 @@ func main() {
 
 	game := NewGame(
 		assetLoader,
-		newWindowsGraphics(device, camera),
+		graphics,
 		camera,
 		charIndex,
 	)
@@ -212,32 +215,41 @@ type d3dImage struct {
 	camera *windowCamera
 }
 
-func newWindowsAssetLoader(device d3d9.Device, camera *windowCamera) *windowsAssetloader {
-	l := &windowsAssetloader{
-		device: device,
-		camera: camera,
-		sounds: make(map[string]*wavSound),
-		images: make(map[string]*textureImage),
-	}
-	check(l.loadResources())
-	return l
-}
-
 type textureImage struct {
+	graphics      *windowsGraphics
 	texture       d3d9.Texture
 	width, height int
 }
 
 func (img *textureImage) DrawAt(x, y int) {
-	// TODO
+	// this call is referred to the graphics which will accumulate all calls
+	// and then flush them out in one go at rendering time
+	img.graphics.drawImageAt(img, x, y)
 }
 
 func (img *textureImage) Size() (int, int) {
 	return img.width, img.height
 }
 
+func newWindowsAssetLoader(
+	device d3d9.Device,
+	graphics *windowsGraphics,
+	camera *windowCamera,
+) *windowsAssetloader {
+	l := &windowsAssetloader{
+		device:   device,
+		graphics: graphics,
+		camera:   camera,
+		sounds:   make(map[string]*wavSound),
+		images:   make(map[string]*textureImage),
+	}
+	check(l.loadResources())
+	return l
+}
+
 type windowsAssetloader struct {
 	device    d3d9.Device
+	graphics  *windowsGraphics
 	resources *blob.Blob
 	camera    *windowCamera
 	sounds    map[string]*wavSound
@@ -300,6 +312,7 @@ func (l *windowsAssetloader) LoadImage(id string) Image {
 	))
 
 	img := &textureImage{
+		l.graphics,
 		texture,
 		nrgba.Bounds().Dx(),
 		nrgba.Bounds().Dy(),
@@ -329,10 +342,16 @@ func (l *windowsAssetloader) LoadSound(id string) Sound {
 }
 
 type windowsGraphics struct {
-	device    d3d9.Device
-	camera    *windowCamera
-	textureVS d3d9.VertexShader
-	texturePS d3d9.PixelShader
+	device                   d3d9.Device
+	camera                   *windowCamera
+	textureVS                d3d9.VertexShader
+	texturePS                d3d9.PixelShader
+	vertexBuffer             d3d9.VertexBuffer
+	vertexBufferLength       int
+	textureCoordBuffer       d3d9.VertexBuffer
+	textureCoordBufferLength int
+	vertices                 []float32
+	textureCoords            []float32
 }
 
 func newWindowsGraphics(device d3d9.Device, camera *windowCamera) *windowsGraphics {
@@ -355,6 +374,7 @@ func (g *windowsGraphics) init() error {
 	}
 	g.textureVS = textureVS
 	g.texturePS = texturePS
+
 	return nil
 }
 
@@ -374,4 +394,13 @@ func (graphics *windowsGraphics) ClearScreen(r, g, b uint8) {
 		1,
 		0,
 	))
+}
+
+func (g *windowsGraphics) drawImageAt(img *textureImage, x, y int) {
+
+}
+
+func (g *windowsGraphics) flush() {
+	check(g.device.SetVertexShader(g.textureVS))
+	check(g.device.SetPixelShader(g.texturePS))
 }

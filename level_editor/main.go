@@ -3,12 +3,18 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/gonutz/gophette/resource"
+	"github.com/gonutz/blob"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/sdl_image"
 	"io/ioutil"
+	"os"
+	"runtime"
 	"unsafe"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 var (
 	renderer       *sdl.Renderer
@@ -18,10 +24,17 @@ var (
 	draggingImage  = false
 	draggingObject = false
 	images         []image
+	resources      *blob.Blob
 )
 
 func main() {
-	fmt.Print()
+	func() {
+		file, err := os.Open("../resource/resources.blob")
+		check(err)
+		defer file.Close()
+		resources, err = blob.Read(file)
+		check(err)
+	}()
 
 	sdl.SetHint(sdl.HINT_RENDER_VSYNC, "1")
 
@@ -302,7 +315,7 @@ func check(err error) {
 }
 
 func loadImage(id string) *sdl.Texture {
-	data := resource.Resources[id]
+	data, _ := resources.GetByID(id)
 	rwOps := sdl.RWFromMem(unsafe.Pointer(&data[0]), len(data))
 	surface, err := img.Load_RW(rwOps, false)
 	check(err)

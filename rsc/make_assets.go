@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/binary"
 	"github.com/disintegration/imaging"
 	"github.com/gonutz/blob"
 	"github.com/gonutz/xcf"
@@ -15,11 +15,12 @@ import (
 
 const scale = 0.33
 
-type ResourceMap map[string][]byte
+type rect struct {
+	x, y, w, h int32
+}
 
 func main() {
 	resources := blob.New()
-	constants := bytes.NewBuffer(nil)
 
 	gophette, err := xcf.LoadFromFile("./gophette.xcf")
 	check(err)
@@ -27,7 +28,7 @@ func main() {
 	check(err)
 
 	// create the collision information for Gophette and Barney
-	addCollisionInfo := func(canvas xcf.Canvas, variable string) {
+	addCollisionInfo := func(canvas xcf.Canvas, id string) {
 		collision := canvas.GetLayerByName("collision")
 		left, top := findTopLeftNonTransparentPixel(collision)
 		right, bottom := findBottomRightNonTransparentPixel(collision)
@@ -37,15 +38,13 @@ func main() {
 		right = int(0.5 + scale*float64(right))
 		bottom = int(0.5 + scale*float64(bottom))
 		width, height := right-left+1, bottom-top+1
-		line := fmt.Sprintf(
-			"var %v = Rectangle{%v, %v, %v, %v}\n",
-			variable,
-			left, top, width, height,
-		)
-		constants.WriteString(line)
+		r := rect{int32(left), int32(top), int32(width), int32(height)}
+		buffer := bytes.NewBuffer(nil)
+		check(binary.Write(buffer, binary.LittleEndian, &r))
+		resources.Append(id, buffer.Bytes())
 	}
-	addCollisionInfo(gophette, "HeroCollisionRect")
-	addCollisionInfo(barney, "BarneyCollisionRect")
+	addCollisionInfo(gophette, "hero collision")
+	addCollisionInfo(barney, "barney collision")
 
 	// create the image resources
 	for _, layer := range []string{

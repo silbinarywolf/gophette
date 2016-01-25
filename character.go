@@ -54,9 +54,8 @@ type Character struct {
 
 func NewHero(assets AssetLoader) *Character {
 	return &Character{
-		// TODO load Position and collisionRect
-		Position:      Rectangle{0, 0, 100, 200},
-		collisionRect: Rectangle{0, 0, 100, 200},
+		Position:      assets.LoadRectangle("hero collision"),
+		collisionRect: assets.LoadRectangle("hero collision"),
 		Params:        HeroParams,
 		runFrames: [DirectionCount][]Image{
 			[]Image{
@@ -85,9 +84,8 @@ func NewHero(assets AssetLoader) *Character {
 
 func NewBarney(assets AssetLoader) *Character {
 	return &Character{
-		// TODO load Position and collisionRect
-		Position:      Rectangle{0, 0, 100, 200},
-		collisionRect: Rectangle{0, 0, 100, 200},
+		Position:      assets.LoadRectangle("barney collision"),
+		collisionRect: assets.LoadRectangle("barney collision"),
 		Params:        BarneyParams,
 		runFrames: [DirectionCount][]Image{
 			[]Image{
