@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/disintegration/imaging"
+	"github.com/gonutz/blob"
 	"github.com/gonutz/xcf"
 	"github.com/nfnt/resize"
 	"image"
 	"image/png"
 	"io/ioutil"
-	"sort"
-	"strconv"
-	"strings"
+	"os"
 )
 
 const scale = 0.33
@@ -19,7 +18,7 @@ const scale = 0.33
 type ResourceMap map[string][]byte
 
 func main() {
-	resources := make(ResourceMap)
+	resources := blob.New()
 	constants := bytes.NewBuffer(nil)
 
 	gophette, err := xcf.LoadFromFile("./gophette.xcf")
@@ -56,8 +55,14 @@ func main() {
 		"run3",
 	} {
 		small := scaleImage(gophette.GetLayerByName(layer))
-		resources["gophette_left_"+layer] = imageToBytes(small)
-		resources["gophette_right_"+layer] = imageToBytes(imaging.FlipH(small))
+		resources.Append(
+			"gophette_left_"+layer,
+			imageToBytes(small),
+		)
+		resources.Append(
+			"gophette_right_"+layer,
+			imageToBytes(imaging.FlipH(small)),
+		)
 	}
 
 	for _, layer := range []string{
@@ -72,8 +77,8 @@ func main() {
 	} {
 		smallLeft := scaleImage(barney.GetLayerByName("left_" + layer))
 		smallRight := scaleImage(barney.GetLayerByName("right_" + layer))
-		resources["barney_left_"+layer] = imageToBytes(smallLeft)
-		resources["barney_right_"+layer] = imageToBytes(smallRight)
+		resources.Append("barney_left_"+layer, imageToBytes(smallLeft))
+		resources.Append("barney_right_"+layer, imageToBytes(smallRight))
 	}
 
 	grass, err := xcf.LoadFromFile("./grass.xcf")
@@ -85,7 +90,7 @@ func main() {
 		"grass center 2",
 		"grass center 3",
 	} {
-		resources[layer] = imageToBytes(grass.GetLayerByName(layer))
+		resources.Append(layer, imageToBytes(grass.GetLayerByName(layer)))
 	}
 
 	grassLong, err := xcf.LoadFromFile("./grass_long.xcf")
@@ -95,7 +100,7 @@ func main() {
 		"grass long 2",
 		"grass long 3",
 	} {
-		resources[layer] = imageToBytes(grassLong.GetLayerByName(layer))
+		resources.Append(layer, imageToBytes(grassLong.GetLayerByName(layer)))
 	}
 
 	ground, err := xcf.LoadFromFile("./ground.xcf")
@@ -107,7 +112,7 @@ func main() {
 		"ground center 2",
 		"ground center 3",
 	} {
-		resources[layer] = imageToBytes(ground.GetLayerByName(layer))
+		resources.Append(layer, imageToBytes(ground.GetLayerByName(layer)))
 	}
 
 	groundLong, err := xcf.LoadFromFile("./ground_long.xcf")
@@ -116,45 +121,51 @@ func main() {
 		"ground long 1",
 		"ground long 2",
 	} {
-		resources[layer] = imageToBytes(groundLong.GetLayerByName(layer))
+		resources.Append(layer, imageToBytes(groundLong.GetLayerByName(layer)))
 	}
 
 	rock, err := xcf.LoadFromFile("./rock.xcf")
 	check(err)
-	resources["square rock"] = imageToBytes(scaleImage(rock.GetLayerByName("rock")))
+	resources.Append("square rock", imageToBytes(scaleImage(rock.GetLayerByName("rock"))))
 
 	tree, err := xcf.LoadFromFile("./tree.xcf")
 	check(err)
 	smallTree := scaleImage(tree.GetLayerByName("small"))
-	resources["small tree"] = imageToBytes(smallTree)
+	resources.Append("small tree", imageToBytes(smallTree))
 
 	tree, err = xcf.LoadFromFile("./tree_big.xcf")
 	check(err)
 	bigTree := scaleImage(tree.GetLayerByName("big"))
-	resources["big tree"] = imageToBytes(bigTree)
+	resources.Append("big tree", imageToBytes(bigTree))
 
 	tree, err = xcf.LoadFromFile("./tree_huge.xcf")
 	check(err)
 	hugeTree := scaleImage(tree.GetLayerByName("huge"))
-	resources["huge tree"] = imageToBytes(hugeTree)
+	resources.Append("huge tree", imageToBytes(hugeTree))
 
 	cave, err := xcf.LoadFromFile("./cave.xcf")
 	check(err)
-	resources["cave back"] = imageToBytes(scaleImage(cave.GetLayerByName("cave back")))
-	resources["cave front"] = imageToBytes(scaleImage(cave.GetLayerByName("cave front")))
+	resources.Append("cave back", imageToBytes(scaleImage(cave.GetLayerByName("cave back"))))
+	resources.Append("cave front", imageToBytes(scaleImage(cave.GetLayerByName("cave front"))))
 
 	intro, err := xcf.LoadFromFile("./intro.xcf")
 	check(err)
-	resources["intro pc 1"] = imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 1"), 0.67))
-	resources["intro pc 2"] = imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 2"), 0.67))
-	resources["intro gophette"] = imageToBytes(scaleImageToFactor(intro.GetLayerByName("gophette"), 0.67))
+	resources.Append(
+		"intro pc 1",
+		imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 1"), 0.67)),
+	)
+	resources.Append(
+		"intro pc 2",
+		imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 2"), 0.67)),
+	)
+	resources.Append(
+		"intro gophette",
+		imageToBytes(scaleImageToFactor(intro.GetLayerByName("gophette"), 0.67)),
+	)
 
-	// the music file is too big, breaks IDE
-	/*
-		music, err := ioutil.ReadFile("./background_music.ogg")
-		check(err)
-		resources["music"] = music
-	*/
+	music, err := ioutil.ReadFile("./background_music.ogg")
+	check(err)
+	resources.Append("music", music)
 
 	for _, sound := range []string{
 		"win",
@@ -167,11 +178,13 @@ func main() {
 	} {
 		data, err := ioutil.ReadFile(sound + ".wav")
 		check(err)
-		resources[sound] = data
+		resources.Append(sound, data)
 	}
 
-	content := toGoFile(resources, string(constants.Bytes()))
-	ioutil.WriteFile("../resource/resources.go", content, 0777)
+	resourceFile, err := os.Create("../resource/resources.blob")
+	check(err)
+	defer resourceFile.Close()
+	resources.Write(resourceFile)
 }
 
 func imageToBytes(img image.Image) []byte {
@@ -215,58 +228,6 @@ func scaleImageToFactor(img image.Image, f float64) image.Image {
 		img,
 		resize.Bicubic,
 	)
-}
-
-func toGoFile(resources ResourceMap, constants string) []byte {
-	buffer := bytes.NewBuffer(nil)
-	buffer.WriteString(`package resource
-
-// NOTE this file is generated, do not edit it
-
-type Rectangle struct{ X, Y, W, H int }
-
-` + constants + `
-var Resources = map[string][]byte{`)
-
-	var table sortableResourceEntries
-	for id, data := range resources {
-		table = append(table, resourceEntry{id, data})
-	}
-	sort.Sort(table)
-
-	for _, entry := range table {
-		buffer.WriteString(`
-	"` + entry.id + `": []byte{`)
-		for i, b := range entry.data {
-			if i > 0 {
-				buffer.WriteString(", ")
-			}
-			buffer.WriteString(strconv.Itoa(int(b)))
-		}
-		buffer.WriteString("},")
-	}
-
-	buffer.WriteString("\n}\n")
-	return buffer.Bytes()
-}
-
-type resourceEntry struct {
-	id   string
-	data []byte
-}
-
-type sortableResourceEntries []resourceEntry
-
-func (e sortableResourceEntries) Len() int {
-	return len(e)
-}
-
-func (e sortableResourceEntries) Less(i, j int) bool {
-	return strings.Compare(e[i].id, e[j].id) < 0
-}
-
-func (e sortableResourceEntries) Swap(i, j int) {
-	e[i], e[j] = e[j], e[i]
 }
 
 func check(err error) {
