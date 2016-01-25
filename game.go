@@ -80,12 +80,10 @@ func NewGame(
 ) *Game {
 	hero := NewHero(assets)
 	hero.SetBottomCenterTo(500, 537)
-	//hero.SetBottomCenterTo(8800, -800) // TODO
 	hero.Direction = RightDirectionIndex
 
 	barney := NewBarney(assets)
-	//barney.SetBottomCenterTo(8500, -800)
-	barney.SetBottomCenterTo(300, 537) // TODO
+	barney.SetBottomCenterTo(300, 537)
 	barney.Direction = RightDirectionIndex
 
 	cameraBounds := Rectangle{200, -1399, 9150, 2100}

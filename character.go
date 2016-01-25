@@ -1,7 +1,5 @@
 package main
 
-import "github.com/gonutz/gophette/resource"
-
 type CharacterParams struct {
 	AccelerationX     int
 	DecelerationX     int
@@ -54,14 +52,11 @@ type Character struct {
 	nextRunFrame  int
 }
 
-func toRect(r resource.Rectangle) Rectangle {
-	return Rectangle{r.X, r.Y, r.W, r.H}
-}
-
 func NewHero(assets AssetLoader) *Character {
 	return &Character{
-		Position:      toRect(resource.HeroCollisionRect),
-		collisionRect: toRect(resource.HeroCollisionRect),
+		// TODO load Position and collisionRect
+		Position:      Rectangle{0, 0, 100, 200},
+		collisionRect: Rectangle{0, 0, 100, 200},
 		Params:        HeroParams,
 		runFrames: [DirectionCount][]Image{
 			[]Image{
@@ -90,8 +85,9 @@ func NewHero(assets AssetLoader) *Character {
 
 func NewBarney(assets AssetLoader) *Character {
 	return &Character{
-		Position:      toRect(resource.BarneyCollisionRect),
-		collisionRect: toRect(resource.BarneyCollisionRect),
+		// TODO load Position and collisionRect
+		Position:      Rectangle{0, 0, 100, 200},
+		collisionRect: Rectangle{0, 0, 100, 200},
 		Params:        BarneyParams,
 		runFrames: [DirectionCount][]Image{
 			[]Image{

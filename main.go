@@ -1,14 +1,22 @@
+// +build !windows
+
 package main
 
 import (
 	"fmt"
-	"github.com/gophergala2016/gonutz/resource"
+	"github.com/gonutz/blob"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/sdl_image"
 	"github.com/veandco/go-sdl2/sdl_mixer"
+	"os"
+	"runtime"
 	"time"
 	"unsafe"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 func main() {
 	sdl.SetHint(sdl.HINT_RENDER_VSYNC, "1")
@@ -171,26 +179,39 @@ func (s *wavSound) PlayOnce() {
 }
 
 type sdlAssetLoader struct {
-	camera   *windowCamera
-	renderer *sdl.Renderer
-	images   map[string]*textureImage
-	sounds   map[string]*wavSound
+	resources *blob.Blob
+	camera    *windowCamera
+	renderer  *sdl.Renderer
+	images    map[string]*textureImage
+	sounds    map[string]*wavSound
+}
+
+func (l *sdlAssetLoader) loadResources() error {
+	rscFile, err := os.Open("./resource/resources.blob")
+	if err != nil {
+		return err
+	}
+	defer rscFile.Close()
+	l.resources, err = blob.Read(rscFile)
+	return err
 }
 
 func newSDLAssetLoader(cam *windowCamera, renderer *sdl.Renderer) *sdlAssetLoader {
-	return &sdlAssetLoader{
+	l := &sdlAssetLoader{
 		camera:   cam,
 		renderer: renderer,
 		images:   make(map[string]*textureImage),
 		sounds:   make(map[string]*wavSound),
 	}
+	check(l.loadResources())
+	return l
 }
 
 func (l *sdlAssetLoader) LoadImage(id string) Image {
 	if img, ok := l.images[id]; ok {
 		return img
 	}
-	data := resource.Resources[id]
+	data, _ := l.resources.GetByID(id)
 	if data == nil {
 		panic("unknown image resource: " + id)
 	}
@@ -211,7 +232,7 @@ func (l *sdlAssetLoader) LoadSound(id string) Sound {
 	if sound, ok := l.sounds[id]; ok {
 		return sound
 	}
-	data := resource.Resources[id]
+	data, _ := l.resources.GetByID(id)
 	if data == nil {
 		panic("unknown sound resource: " + id)
 	}
