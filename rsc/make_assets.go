@@ -16,7 +16,7 @@ import (
 const scale = 0.33
 
 type rect struct {
-	x, y, w, h int32
+	X, Y, W, H int32
 }
 
 func main() {

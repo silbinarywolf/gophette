@@ -1,9 +1,8 @@
-// +build ignore
-
 package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"github.com/gonutz/blob"
 	"github.com/gonutz/d3d9"
 	"github.com/gonutz/mixer"
@@ -188,12 +187,9 @@ func main() {
 		}
 
 		check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
+		game.Render()
+		graphics.flush()
 		check(device.Present(nil, nil, nil, nil))
-		device.GetRenderState(0)
-		//check(renderer.SetDrawColor(0, 95, 83, 255))
-		//check(renderer.Clear())
-		//game.Render()
-		//renderer.Present()
 	}
 }
 
@@ -339,6 +335,21 @@ func (l *windowsAssetloader) LoadSound(id string) Sound {
 	l.sounds[id] = sound
 
 	return sound
+}
+
+func (l *windowsAssetloader) LoadRectangle(id string) Rectangle {
+	data, found := l.resources.GetByID(id)
+	if !found {
+		panic("unknown rectangle resource: " + id)
+	}
+	reader := bytes.NewReader(data)
+	var r rect
+	check(binary.Read(reader, binary.LittleEndian, &r))
+	return Rectangle{int(r.X), int(r.Y), int(r.W), int(r.H)}
+}
+
+type rect struct {
+	X, Y, W, H int32
 }
 
 type windowsGraphics struct {
