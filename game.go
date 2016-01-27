@@ -267,6 +267,8 @@ func (g *Game) resetLevel() {
 	copy(g.aiInputs, recordedInputs)
 	frame = 0
 
+	g.inputStates[1] = inputState{}
+
 	g.state = PrePlaying
 	g.prePlayCountDown = PrePlayFrameDelay
 }
