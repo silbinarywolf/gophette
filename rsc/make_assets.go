@@ -46,6 +46,10 @@ func main() {
 	addCollisionInfo(gophette, "hero collision")
 	addCollisionInfo(barney, "barney collision")
 
+	addImage := func(img image.Image, id string) {
+		resources.Append(id, imageToBytes(img))
+	}
+
 	// create the image resources
 	for _, layer := range []string{
 		"jump",
@@ -54,14 +58,8 @@ func main() {
 		"run3",
 	} {
 		small := scaleImage(gophette.GetLayerByName(layer))
-		resources.Append(
-			"gophette_left_"+layer,
-			imageToBytes(small),
-		)
-		resources.Append(
-			"gophette_right_"+layer,
-			imageToBytes(imaging.FlipH(small)),
-		)
+		addImage(small, "gophette_left_"+layer)
+		addImage(imaging.FlipH(small), "gophette_right_"+layer)
 	}
 
 	for _, layer := range []string{
@@ -76,8 +74,8 @@ func main() {
 	} {
 		smallLeft := scaleImage(barney.GetLayerByName("left_" + layer))
 		smallRight := scaleImage(barney.GetLayerByName("right_" + layer))
-		resources.Append("barney_left_"+layer, imageToBytes(smallLeft))
-		resources.Append("barney_right_"+layer, imageToBytes(smallRight))
+		addImage(smallLeft, "barney_left_"+layer)
+		addImage(smallRight, "barney_right_"+layer)
 	}
 
 	grass, err := xcf.LoadFromFile("./grass.xcf")
@@ -89,7 +87,7 @@ func main() {
 		"grass center 2",
 		"grass center 3",
 	} {
-		resources.Append(layer, imageToBytes(grass.GetLayerByName(layer)))
+		addImage(grass.GetLayerByName(layer), layer)
 	}
 
 	grassLong, err := xcf.LoadFromFile("./grass_long.xcf")
@@ -99,7 +97,7 @@ func main() {
 		"grass long 2",
 		"grass long 3",
 	} {
-		resources.Append(layer, imageToBytes(grassLong.GetLayerByName(layer)))
+		addImage(grassLong.GetLayerByName(layer), layer)
 	}
 
 	ground, err := xcf.LoadFromFile("./ground.xcf")
@@ -111,7 +109,7 @@ func main() {
 		"ground center 2",
 		"ground center 3",
 	} {
-		resources.Append(layer, imageToBytes(ground.GetLayerByName(layer)))
+		addImage(ground.GetLayerByName(layer), layer)
 	}
 
 	groundLong, err := xcf.LoadFromFile("./ground_long.xcf")
@@ -120,47 +118,38 @@ func main() {
 		"ground long 1",
 		"ground long 2",
 	} {
-		resources.Append(layer, imageToBytes(groundLong.GetLayerByName(layer)))
+		addImage(groundLong.GetLayerByName(layer), layer)
 	}
 
 	rock, err := xcf.LoadFromFile("./rock.xcf")
 	check(err)
-	resources.Append("square rock", imageToBytes(scaleImage(rock.GetLayerByName("rock"))))
+	addImage(scaleImage(rock.GetLayerByName("rock")), "square rock")
 
 	tree, err := xcf.LoadFromFile("./tree.xcf")
 	check(err)
 	smallTree := scaleImage(tree.GetLayerByName("small"))
-	resources.Append("small tree", imageToBytes(smallTree))
+	addImage(smallTree, "small tree")
 
 	tree, err = xcf.LoadFromFile("./tree_big.xcf")
 	check(err)
 	bigTree := scaleImage(tree.GetLayerByName("big"))
-	resources.Append("big tree", imageToBytes(bigTree))
+	addImage(bigTree, "big tree")
 
 	tree, err = xcf.LoadFromFile("./tree_huge.xcf")
 	check(err)
 	hugeTree := scaleImage(tree.GetLayerByName("huge"))
-	resources.Append("huge tree", imageToBytes(hugeTree))
+	addImage(hugeTree, "huge tree")
 
 	cave, err := xcf.LoadFromFile("./cave.xcf")
 	check(err)
-	resources.Append("cave back", imageToBytes(scaleImage(cave.GetLayerByName("cave back"))))
-	resources.Append("cave front", imageToBytes(scaleImage(cave.GetLayerByName("cave front"))))
+	addImage(scaleImage(cave.GetLayerByName("cave back")), "cave back")
+	addImage(scaleImage(cave.GetLayerByName("cave front")), "cave front")
 
 	intro, err := xcf.LoadFromFile("./intro.xcf")
 	check(err)
-	resources.Append(
-		"intro pc 1",
-		imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 1"), 0.67)),
-	)
-	resources.Append(
-		"intro pc 2",
-		imageToBytes(scaleImageToFactor(intro.GetLayerByName("pc 2"), 0.67)),
-	)
-	resources.Append(
-		"intro gophette",
-		imageToBytes(scaleImageToFactor(intro.GetLayerByName("gophette"), 0.67)),
-	)
+	addImage(scaleImageToFactor(intro.GetLayerByName("pc 1"), 0.67), "intro pc 1")
+	addImage(scaleImageToFactor(intro.GetLayerByName("pc 2"), 0.67), "intro pc 2")
+	addImage(scaleImageToFactor(intro.GetLayerByName("gophette"), 0.67), "intro gophette")
 
 	music, err := ioutil.ReadFile("./background_music.ogg")
 	check(err)
