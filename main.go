@@ -1,4 +1,4 @@
-// +build !windows
+//- +build !windows
 
 package main
 
@@ -156,20 +156,17 @@ type textureImage struct {
 	renderer *sdl.Renderer
 	camera   *windowCamera
 	texture  *sdl.Texture
+	source   sdl.Rect
 }
 
 func (img *textureImage) DrawAt(x, y int) {
-	_, _, w, h, err := img.texture.Query()
-	check(err)
 	dx, dy := img.camera.offset()
-	dest := sdl.Rect{int32(x + dx), int32(y + dy), w, h}
-	check(img.renderer.Copy(img.texture, nil, &dest))
+	dest := sdl.Rect{int32(x + dx), int32(y + dy), img.source.W, img.source.H}
+	check(img.renderer.Copy(img.texture, &img.source, &dest))
 }
 
 func (img *textureImage) Size() (int, int) {
-	_, _, w, h, err := img.texture.Query()
-	check(err)
-	return int(w), int(h)
+	return int(img.source.W), int(img.source.H)
 }
 
 type wavSound struct {
@@ -181,11 +178,12 @@ func (s *wavSound) PlayOnce() {
 }
 
 type sdlAssetLoader struct {
-	resources *blob.Blob
-	camera    *windowCamera
-	renderer  *sdl.Renderer
-	images    map[string]*textureImage
-	sounds    map[string]*wavSound
+	resources    *blob.Blob
+	camera       *windowCamera
+	renderer     *sdl.Renderer
+	textureAtlas *sdl.Texture
+	images       map[string]*textureImage
+	sounds       map[string]*wavSound
 }
 
 func (l *sdlAssetLoader) loadResources() error {
@@ -195,6 +193,20 @@ func (l *sdlAssetLoader) loadResources() error {
 	}
 	defer rscFile.Close()
 	l.resources, err = blob.Read(rscFile)
+
+	// load the texture atlas
+	atlas, found := l.resources.GetByID("atlas")
+	if !found {
+		panic("texture atlas not found in resources")
+	}
+	rwOps := sdl.RWFromMem(unsafe.Pointer(&atlas[0]), len(atlas))
+	surface, err := img.Load_RW(rwOps, false)
+	check(err)
+	defer surface.Free()
+	texture, err := l.renderer.CreateTextureFromSurface(surface)
+	check(err)
+	l.textureAtlas = texture
+
 	return err
 }
 
@@ -218,13 +230,17 @@ func (l *sdlAssetLoader) LoadImage(id string) Image {
 		panic("unknown image resource: " + id)
 	}
 
-	rwOps := sdl.RWFromMem(unsafe.Pointer(&data[0]), len(data))
-	surface, err := img.Load_RW(rwOps, false)
-	check(err)
-	defer surface.Free()
-	texture, err := l.renderer.CreateTextureFromSurface(surface)
-	check(err)
-	image := &textureImage{l.renderer, l.camera, texture}
+	// the loaded data is a binary rectangle that describes the location in
+	// the texture atlas for the given image ID
+	var bounds rect
+	check(binary.Read(bytes.NewReader(data), binary.LittleEndian, &bounds))
+
+	image := &textureImage{
+		l.renderer,
+		l.camera,
+		l.textureAtlas,
+		sdl.Rect{bounds.X, bounds.Y, bounds.W, bounds.H},
+	}
 	l.images[id] = image
 
 	return image

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/disintegration/imaging"
+	"github.com/gonutz/atlas"
 	"github.com/gonutz/blob"
 	"github.com/gonutz/xcf"
 	"github.com/nfnt/resize"
@@ -15,12 +16,11 @@ import (
 
 const scale = 0.33
 
-type rect struct {
-	X, Y, W, H int32
-}
+var byteOrder = binary.LittleEndian
 
 func main() {
 	resources := blob.New()
+	textureAtlas := atlas.New(2048)
 
 	gophette, err := xcf.LoadFromFile("./gophette.xcf")
 	check(err)
@@ -40,14 +40,15 @@ func main() {
 		width, height := right-left+1, bottom-top+1
 		r := rect{int32(left), int32(top), int32(width), int32(height)}
 		buffer := bytes.NewBuffer(nil)
-		check(binary.Write(buffer, binary.LittleEndian, &r))
+		check(binary.Write(buffer, byteOrder, &r))
 		resources.Append(id, buffer.Bytes())
 	}
 	addCollisionInfo(gophette, "hero collision")
 	addCollisionInfo(barney, "barney collision")
 
 	addImage := func(img image.Image, id string) {
-		resources.Append(id, imageToBytes(img))
+		_, err := textureAtlas.Add(id, img)
+		check(err)
 	}
 
 	// create the image resources
@@ -169,6 +170,14 @@ func main() {
 		resources.Append(sound, data)
 	}
 
+	resources.Append("atlas", imageToBytes(textureAtlas))
+	for _, sub := range textureAtlas.SubImages {
+		resources.Append(
+			sub.ID,
+			toRectData(sub.Bounds().Sub(textureAtlas.Bounds().Min)),
+		)
+	}
+
 	resourceFile, err := os.Create("../resource/resources.blob")
 	check(err)
 	defer resourceFile.Close()
@@ -222,4 +231,20 @@ func check(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type rect struct {
+	X, Y, W, H int32
+}
+
+func toRectData(bounds image.Rectangle) []byte {
+	buf := bytes.NewBuffer(nil)
+	r := rect{
+		int32(bounds.Min.X),
+		int32(bounds.Min.Y),
+		int32(bounds.Dx()),
+		int32(bounds.Dy()),
+	}
+	check(binary.Write(buf, byteOrder, &r))
+	return buf.Bytes()
 }
