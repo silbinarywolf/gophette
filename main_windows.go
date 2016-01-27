@@ -1,52 +1,147 @@
 package main
 
+/*
+#cgo CFLAGS: -DUNICODE -DWINVER=0x500
+
+#include "windows/win_wrapper.h"
+*/
+import "C"
+
 import (
 	"bytes"
 	"encoding/binary"
 	"github.com/gonutz/blob"
 	"github.com/gonutz/d3d9"
 	"github.com/gonutz/d3dmath"
+	"github.com/gonutz/gophette/windows"
 	"github.com/gonutz/mixer"
 	"github.com/gonutz/mixer/wav"
-	"github.com/veandco/go-sdl2/sdl"
 	"image"
 	"image/draw"
 	"image/png"
 	"os"
 	"runtime"
+	"syscall"
 	"time"
+	"unsafe"
 )
 
 func init() {
 	runtime.LockOSThread()
 }
 
+var (
+	windowProc        = syscall.NewCallback(messageCallback)
+	windowW           = 800
+	windowH           = 800
+	game              *Game
+	camera            *windowCamera
+	charIndex         int
+	previousPlacement C.WINDOWPLACEMENT
+)
+
+func toggleFullscreen(window C.HWND) {
+	style := C.GetWindowLong(window, C.GWL_STYLE)
+	if style&C.WS_OVERLAPPEDWINDOW != 0 {
+		// go into full-screen
+		monitorInfo := C.MONITORINFO{cbSize: C.sizeof_MONITORINFO}
+		previousPlacement.length = C.sizeof_WINDOWPLACEMENT
+		monitor := C.MonitorFromWindow(window, C.MONITOR_DEFAULTTOPRIMARY)
+		if C.GetWindowPlacement(window, &previousPlacement) != 0 &&
+			C.GetMonitorInfo(monitor, &monitorInfo) != 0 {
+			C.SetWindowLong(window, C.GWL_STYLE, style & ^C.WS_OVERLAPPEDWINDOW)
+			C.SetWindowPos(window, C.HWND(unsafe.Pointer(uintptr(0))),
+				C.int(monitorInfo.rcMonitor.left),
+				C.int(monitorInfo.rcMonitor.top),
+				C.int(monitorInfo.rcMonitor.right-monitorInfo.rcMonitor.left),
+				C.int(monitorInfo.rcMonitor.bottom-monitorInfo.rcMonitor.top),
+				C.SWP_NOOWNERZORDER|C.SWP_FRAMECHANGED,
+			)
+		}
+	} else {
+		// go into windowed mode
+		C.SetWindowLong(window, C.GWL_STYLE, style|C.WS_OVERLAPPEDWINDOW)
+		C.SetWindowPlacement(window, &previousPlacement)
+		C.SetWindowPos(window, nil, 0, 0, 0, 0,
+			C.SWP_NOMOVE|C.SWP_NOSIZE|C.SWP_NOZORDER|
+				C.SWP_NOOWNERZORDER|C.SWP_FRAMECHANGED,
+		)
+	}
+}
+
+func lowWord(x uint) int {
+	return int(x & 0xFFFF)
+}
+
+func highWord(x uint) int {
+	return int((x >> 16) & 0xFFFF)
+}
+
+func isKeyRepeat(l C.LPARAM) bool {
+	return l&(1<<30) != 0
+}
+
+func messageCallback(window C.HWND, message C.UINT, w C.WPARAM, l C.LPARAM) C.LRESULT {
+	switch message {
+	case C.WM_KEYDOWN:
+		if !isKeyRepeat(l) {
+			switch w {
+			case C.VK_LEFT:
+				game.HandleInput(InputEvent{GoLeft, true, charIndex})
+			case C.VK_RIGHT:
+				game.HandleInput(InputEvent{GoRight, true, charIndex})
+			case C.VK_UP, C.VK_SPACE:
+				game.HandleInput(InputEvent{Jump, true, charIndex})
+			case C.VK_ESCAPE:
+				game.HandleInput(InputEvent{QuitGame, true, charIndex})
+			}
+		}
+		return 1
+	case C.WM_KEYUP:
+		switch w {
+		case C.VK_LEFT:
+			game.HandleInput(InputEvent{GoLeft, false, charIndex})
+		case C.VK_RIGHT:
+			game.HandleInput(InputEvent{GoRight, false, charIndex})
+		case C.VK_UP, C.VK_SPACE:
+			game.HandleInput(InputEvent{Jump, false, charIndex})
+		case C.VK_F11:
+			toggleFullscreen(window)
+		case C.VK_ESCAPE:
+			game.HandleInput(InputEvent{QuitGame, false, charIndex})
+			C.PostQuitMessage(0)
+		}
+		return 1
+	case C.WM_SIZE:
+		if camera != nil {
+			width, height := lowWord(uint(l)), highWord(uint(l))
+			camera.setWindowSize(width, height)
+		}
+		return 1
+	case C.WM_DESTROY:
+		C.PostQuitMessage(0)
+		return 1
+	default:
+		return C.DefWindowProc(window, message, w, l)
+	}
+}
+
 func main() {
 	// TODO enable VSync in D3D
 
-	check(sdl.Init(0))
-	defer sdl.Quit()
+	windowHandle, err := windows.OpenWindow(windowProc, windowW, windowH)
+	check(err)
+	window_ := C.HWND(windowHandle)
+
+	C.SetWindowText(
+		window_,
+		(*C.WCHAR)(syscall.StringToUTF16Ptr("Gophette's Adventure")),
+	)
 
 	check(mixer.Init())
 	defer mixer.Close()
 
-	window, err := sdl.CreateWindow(
-		"Gophette's Adventure",
-		sdl.WINDOWPOS_CENTERED,
-		sdl.WINDOWPOS_CENTERED,
-		800,
-		600,
-		sdl.WINDOW_RESIZABLE,
-	)
-	check(err)
-	defer window.Destroy()
-	fullscreen := false
-
-	info, err := window.GetWMInfo()
-	winInfo := info.GetWindowsInfo()
-	windowHandle := winInfo.Window
-
-	sdl.ShowCursor(0)
+	//sdl.ShowCursor(0)
 
 	check(d3d9.Init())
 	defer d3d9.Close()
@@ -56,20 +151,21 @@ func main() {
 	defer d3d.Release()
 
 	maxScreenW, maxScreenH := 0, 0
-	displayCount, err := sdl.GetNumVideoDisplays()
-	check(err)
-	for i := 0; i < displayCount; i++ {
-		var mode sdl.DisplayMode
-		err := sdl.GetCurrentDisplayMode(i, &mode)
-		if err == nil {
-			if int(mode.W) > maxScreenW {
-				maxScreenW = int(mode.W)
-			}
-			if int(mode.H) > maxScreenH {
-				maxScreenH = int(mode.H)
-			}
-		}
-	}
+	maxScreenW, maxScreenH = 1920, 1280 // TODO
+	//displayCount, err := sdl.GetNumVideoDisplays()
+	//check(err)
+	//for i := 0; i < displayCount; i++ {
+	//	var mode sdl.DisplayMode
+	//	err := sdl.GetCurrentDisplayMode(i, &mode)
+	//	if err == nil {
+	//		if int(mode.W) > maxScreenW {
+	//			maxScreenW = int(mode.W)
+	//		}
+	//		if int(mode.H) > maxScreenH {
+	//			maxScreenH = int(mode.H)
+	//		}
+	//	}
+	//}
 
 	device, _, err := d3d.CreateDevice(
 		d3d9.ADAPTER_DEFAULT,
@@ -94,7 +190,7 @@ func main() {
 	check(device.SetRenderState(d3d9.RS_DESTBLEND, d3d9.BLEND_INVSRCALPHA))
 	check(device.SetRenderState(d3d9.RS_ALPHABLENDENABLE, 1))
 
-	camera := newWindowCamera(window.GetSize())
+	camera = newWindowCamera(windowW, windowH)
 	graphics := newWindowsGraphics(device, camera)
 	defer graphics.close()
 
@@ -106,7 +202,6 @@ func main() {
 	// this to 1 and delete the recorded inputs so they are not applied
 	// additionally to the user controls
 
-	var charIndex int
 	const recordingAI = false // NOTE switch for development mode
 	if !recordingAI {
 		charIndex = 0
@@ -116,7 +211,7 @@ func main() {
 		recordingInput = true
 	}
 
-	game := NewGame(
+	game = NewGame(
 		assetLoader,
 		graphics,
 		camera,
@@ -136,61 +231,64 @@ func main() {
 	//	music.FadeIn(-1, 500)
 	//}
 
-	for game.Running() {
-		for e := sdl.PollEvent(); e != nil; e = sdl.PollEvent() {
-			switch event := e.(type) {
-			case *sdl.KeyDownEvent:
-				if event.Repeat == 0 {
-					switch event.Keysym.Sym {
-					case sdl.K_LEFT:
-						game.HandleInput(InputEvent{GoLeft, true, charIndex})
-					case sdl.K_RIGHT:
-						game.HandleInput(InputEvent{GoRight, true, charIndex})
-					case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
-						game.HandleInput(InputEvent{Jump, true, charIndex})
-					case sdl.K_ESCAPE:
-						game.HandleInput(InputEvent{QuitGame, true, charIndex})
-					}
-				}
-			case *sdl.KeyUpEvent:
-				switch event.Keysym.Sym {
-				case sdl.K_LEFT:
-					game.HandleInput(InputEvent{GoLeft, false, charIndex})
-				case sdl.K_RIGHT:
-					game.HandleInput(InputEvent{GoRight, false, charIndex})
-				case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
-					game.HandleInput(InputEvent{Jump, false, charIndex})
-				case sdl.K_F11:
-					if fullscreen {
-						window.SetFullscreen(0)
-					} else {
-						window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
-					}
-					fullscreen = !fullscreen
-				case sdl.K_ESCAPE:
-					game.HandleInput(InputEvent{QuitGame, false, charIndex})
-				}
-			case *sdl.WindowEvent:
-				if event.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
-					width, height := int(event.Data1), int(event.Data2)
-					camera.setWindowSize(width, height)
-				}
-			case *sdl.QuitEvent:
-				game.HandleInput(InputEvent{QuitGame, true, charIndex})
+	//for game.Running() {
+	//	for e := sdl.PollEvent(); e != nil; e = sdl.PollEvent() {
+	//		switch event := e.(type) {
+	//		case *sdl.KeyDownEvent:
+	//			if event.Repeat == 0 {
+	//				switch event.Keysym.Sym {
+	//				}
+	//			}
+	//		case *sdl.KeyUpEvent:
+	//			switch event.Keysym.Sym {
+	//			case sdl.K_F11:
+	//				if fullscreen {
+	//					window.SetFullscreen(0)
+	//				} else {
+	//					window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
+	//				}
+	//				fullscreen = !fullscreen
+	//			}
+	//		case *sdl.WindowEvent:
+	//			if event.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
+	//				width, height := int(event.Data1), int(event.Data2)
+	//				camera.setWindowSize(width, height)
+	//			}
+	//		}
+	//	}
+
+	//	now := time.Now()
+	//	dt := now.Sub(lastUpdate)
+	//	if dt > frameTime {
+	//		game.Update()
+	//		lastUpdate = now
+	//	}
+
+	//	check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
+	//	game.Render()
+	//	graphics.flush()
+	//	check(device.Present(nil, nil, nil, nil))
+	//}
+
+	var msg C.MSG
+	C.PeekMessage(&msg, nil, 0, 0, C.PM_NOREMOVE)
+	for msg.message != C.WM_QUIT {
+		if C.PeekMessage(&msg, nil, 0, 0, C.PM_REMOVE) != 0 {
+			C.TranslateMessage(&msg)
+			C.DispatchMessage(&msg)
+		} else {
+			now := time.Now()
+			dt := now.Sub(lastUpdate)
+			if dt > frameTime {
+				game.Update()
+				lastUpdate = now
 			}
-		}
 
-		now := time.Now()
-		dt := now.Sub(lastUpdate)
-		if dt > frameTime {
-			game.Update()
-			lastUpdate = now
+			check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
+			game.Render()
+			graphics.flush()
+			check(device.Present(nil, nil, nil, nil))
 		}
-
-		check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
-		game.Render()
-		graphics.flush()
-		check(device.Present(nil, nil, nil, nil))
 	}
 }
 
