@@ -1,4 +1,4 @@
-sampler textureSampler;
+sampler2D textureSampler;
 
 struct input {
 	float2 texCoord : TEXCOORD0;
@@ -9,5 +9,5 @@ struct output {
 };
 
 void main(in input IN, out output OUT) {
-	OUT.color = tex2D(textureSampler, IN.texCoord);
+	OUT.color = tex2D(textureSampler, IN.texCoord).bgra;
 }

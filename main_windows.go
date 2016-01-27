@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/gonutz/blob"
 	"github.com/gonutz/d3d9"
+	"github.com/gonutz/d3dmath"
 	"github.com/gonutz/mixer"
 	"github.com/gonutz/mixer/wav"
 	"github.com/veandco/go-sdl2/sdl"
@@ -94,8 +95,14 @@ func main() {
 	check(err)
 	defer device.Release()
 
+	check(device.SetRenderState(d3d9.RS_CULLMODE, uint32(d3d9.CULL_CW)))
+	check(device.SetRenderState(d3d9.RS_SRCBLEND, d3d9.BLEND_SRCALPHA))
+	check(device.SetRenderState(d3d9.RS_DESTBLEND, d3d9.BLEND_INVSRCALPHA))
+	check(device.SetRenderState(d3d9.RS_ALPHABLENDENABLE, 1))
+
 	camera := newWindowCamera(window.GetSize())
 	graphics := newWindowsGraphics(device, camera)
+	defer graphics.close()
 
 	assetLoader := newWindowsAssetLoader(device, graphics, camera)
 	defer assetLoader.close()
@@ -145,7 +152,7 @@ func main() {
 						game.HandleInput(InputEvent{GoLeft, true, charIndex})
 					case sdl.K_RIGHT:
 						game.HandleInput(InputEvent{GoRight, true, charIndex})
-					case sdl.K_UP:
+					case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
 						game.HandleInput(InputEvent{Jump, true, charIndex})
 					case sdl.K_ESCAPE:
 						game.HandleInput(InputEvent{QuitGame, true, charIndex})
@@ -157,7 +164,7 @@ func main() {
 					game.HandleInput(InputEvent{GoLeft, false, charIndex})
 				case sdl.K_RIGHT:
 					game.HandleInput(InputEvent{GoRight, false, charIndex})
-				case sdl.K_UP:
+				case sdl.K_UP, sdl.K_SPACE, sdl.K_LCTRL:
 					game.HandleInput(InputEvent{Jump, false, charIndex})
 				case sdl.K_F11:
 					if fullscreen {
@@ -212,9 +219,11 @@ type d3dImage struct {
 }
 
 type textureImage struct {
-	graphics      *windowsGraphics
-	texture       d3d9.Texture
-	width, height int
+	graphics *windowsGraphics
+	texture  d3d9.Texture
+	// these are the uv coordinates of the image in the texture
+	u0, u1, v0, v1 float32
+	width, height  int
 }
 
 func (img *textureImage) DrawAt(x, y int) {
@@ -239,45 +248,35 @@ func newWindowsAssetLoader(
 		sounds:   make(map[string]*wavSound),
 		images:   make(map[string]*textureImage),
 	}
-	check(l.loadResources())
+	l.loadResources()
+	l.graphics.textureAtlas = l.textureAtlas
 	return l
 }
 
 type windowsAssetloader struct {
-	device    d3d9.Device
-	graphics  *windowsGraphics
-	resources *blob.Blob
-	camera    *windowCamera
-	sounds    map[string]*wavSound
-	images    map[string]*textureImage
+	device             d3d9.Device
+	graphics           *windowsGraphics
+	resources          *blob.Blob
+	camera             *windowCamera
+	sounds             map[string]*wavSound
+	images             map[string]*textureImage
+	textureAtlas       d3d9.Texture
+	textureAtlasBounds image.Rectangle
 }
 
-func (l *windowsAssetloader) loadResources() error {
+func (l *windowsAssetloader) loadResources() {
 	rscFile, err := os.Open("./resource/resources.blob")
-	if err != nil {
-		return err
-	}
+	check(err)
 	defer rscFile.Close()
 	l.resources, err = blob.Read(rscFile)
-	return err
-}
 
-func (l *windowsAssetloader) close() {
-	for i := range l.images {
-		l.images[i].texture.Release()
-	}
-}
-
-func (l *windowsAssetloader) LoadImage(id string) Image {
-	if img, ok := l.images[id]; ok {
-		return img
+	// load the texture atlas
+	atlas, found := l.resources.GetByID("atlas")
+	if !found {
+		panic("texture atlas not found in resources")
 	}
 
-	data, _ := l.resources.GetByID(id)
-	if data == nil {
-		panic("unknown image resource: " + id)
-	}
-	ping, err := png.Decode(bytes.NewReader(data))
+	ping, err := png.Decode(bytes.NewReader(atlas))
 	check(err)
 
 	var nrgba *image.NRGBA
@@ -307,11 +306,43 @@ func (l *windowsAssetloader) LoadImage(id string) Image {
 		nrgba.Bounds().Dy(),
 	))
 
+	l.textureAtlas = texture
+	l.textureAtlasBounds = nrgba.Bounds()
+}
+
+func (l *windowsAssetloader) close() {
+	for i := range l.images {
+		l.images[i].texture.Release()
+	}
+	l.textureAtlas.Release()
+}
+
+func (l *windowsAssetloader) LoadImage(id string) Image {
+	if img, ok := l.images[id]; ok {
+		return img
+	}
+
+	data, _ := l.resources.GetByID(id)
+	if data == nil {
+		panic("unknown image resource: " + id)
+	}
+
+	var bounds rect
+	check(binary.Read(bytes.NewReader(data), binary.LittleEndian, &bounds))
+
+	var pixelW float32 = 1.0 / float32(l.textureAtlasBounds.Dx())
+	var pixelH float32 = 1.0 / float32(l.textureAtlasBounds.Dy())
+	left := float32(bounds.X) * pixelW
+	bottom := float32(bounds.Y) * pixelH
+	right := float32(bounds.X+bounds.W) * pixelW
+	top := float32(bounds.Y+bounds.H) * pixelH
+
 	img := &textureImage{
 		l.graphics,
-		texture,
-		nrgba.Bounds().Dx(),
-		nrgba.Bounds().Dy(),
+		l.textureAtlas,
+		left, right, top, bottom,
+		int(bounds.W),
+		int(bounds.H),
 	}
 	l.images[id] = img
 
@@ -354,6 +385,7 @@ type rect struct {
 
 type windowsGraphics struct {
 	device                   d3d9.Device
+	textureAtlas             d3d9.Texture
 	camera                   *windowCamera
 	textureVS                d3d9.VertexShader
 	texturePS                d3d9.PixelShader
@@ -363,6 +395,7 @@ type windowsGraphics struct {
 	textureCoordBufferLength int
 	vertices                 []float32
 	textureCoords            []float32
+	vertexDecl               d3d9.VertexDeclaration
 }
 
 func newWindowsGraphics(device d3d9.Device, camera *windowCamera) *windowsGraphics {
@@ -386,7 +419,23 @@ func (g *windowsGraphics) init() error {
 	g.textureVS = textureVS
 	g.texturePS = texturePS
 
+	decl, err := g.device.CreateVertexDeclaration([]d3d9.VERTEXELEMENT{
+		{0, 0, d3d9.DECLTYPE_FLOAT2, d3d9.DECLMETHOD_DEFAULT, d3d9.DECLUSAGE_POSITION, 0},
+		{1, 0, d3d9.DECLTYPE_FLOAT2, d3d9.DECLMETHOD_DEFAULT, d3d9.DECLUSAGE_TEXCOORD, 0},
+		d3d9.DeclEnd(),
+	})
+	check(err)
+	g.vertexDecl = decl
+
 	return nil
+}
+
+func (g *windowsGraphics) close() {
+	g.textureCoordBuffer.Release()
+	g.vertexBuffer.Release()
+	g.vertexDecl.Release()
+	g.texturePS.Release()
+	g.textureVS.Release()
 }
 
 func (graphics *windowsGraphics) FillRect(rect Rectangle, r, g, b, a uint8) {
@@ -408,10 +457,92 @@ func (graphics *windowsGraphics) ClearScreen(r, g, b uint8) {
 }
 
 func (g *windowsGraphics) drawImageAt(img *textureImage, x, y int) {
+	dx, dy := g.camera.offset()
+	x += dx
+	y += dy
 
+	xf, yf := float32(x), float32(y)
+	g.vertices = append(g.vertices,
+		xf, yf,
+		xf, yf+float32(img.height),
+		xf+float32(img.width), yf,
+		xf+float32(img.width), yf,
+		xf, yf+float32(img.height),
+		xf+float32(img.width), yf+float32(img.height),
+	)
+
+	g.textureCoords = append(g.textureCoords,
+		img.u0, img.v1,
+		img.u0, img.v0,
+		img.u1, img.v1,
+		img.u1, img.v1,
+		img.u0, img.v0,
+		img.u1, img.v0,
+	)
 }
 
 func (g *windowsGraphics) flush() {
+	if len(g.vertices) == 0 {
+		// nothing to do in this case
+		return
+	}
+
+	if g.vertexBufferLength < len(g.vertices)*4 {
+		if g.vertexBufferLength > 0 {
+			g.vertexBuffer.Release()
+		}
+		var err error
+		g.vertexBuffer, err = g.device.CreateVertexBuffer(
+			uint(len(g.vertices)*4),
+			d3d9.USAGE_WRITEONLY,
+			0,
+			d3d9.POOL_MANAGED,
+			nil,
+		)
+		check(err)
+		g.vertexBufferLength = len(g.vertices) * 4
+	}
+	check(g.vertexBuffer.LockedSetFloats(0, d3d9.LOCK_DISCARD, g.vertices))
+
+	if g.textureCoordBufferLength < len(g.textureCoords)*4 {
+		if g.textureCoordBufferLength > 0 {
+			g.textureCoordBuffer.Release()
+		}
+		var err error
+		g.textureCoordBuffer, err = g.device.CreateVertexBuffer(
+			uint(len(g.textureCoords)*4),
+			d3d9.USAGE_WRITEONLY,
+			0,
+			d3d9.POOL_MANAGED,
+			nil,
+		)
+		check(err)
+		g.textureCoordBufferLength = len(g.textureCoords) * 4
+	}
+	check(g.textureCoordBuffer.LockedSetFloats(0, d3d9.LOCK_DISCARD, g.textureCoords))
+
 	check(g.device.SetVertexShader(g.textureVS))
 	check(g.device.SetPixelShader(g.texturePS))
+	check(g.device.SetVertexDeclaration(g.vertexDecl))
+	check(g.device.SetStreamSource(0, g.vertexBuffer, 0, 2*4))
+	check(g.device.SetStreamSource(1, g.textureCoordBuffer, 0, 2*4))
+	check(g.device.SetTexture(0, g.textureAtlas.BaseTexture))
+	mvp := d3dmath.Ortho(
+		0,
+		float32(g.camera.position.W),
+		float32(g.camera.position.H),
+		0,
+		-1,
+		1,
+	)
+	check(g.device.SetVertexShaderConstantF(0, mvp[:]))
+
+	check(g.device.BeginScene())
+	check(g.device.DrawPrimitive(d3d9.PT_TRIANGLELIST, 0, uint(len(g.vertices)/3)))
+	check(g.device.EndScene())
+
+	// clear graphics data for next frame, keep the backing arrays to reduce GC
+	// overhead
+	g.vertices = g.vertices[:0]
+	g.textureCoords = g.textureCoords[:0]
 }
