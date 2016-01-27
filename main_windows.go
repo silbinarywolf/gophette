@@ -151,7 +151,8 @@ func main() {
 	check(mixer.Init())
 	defer mixer.Close()
 
-	//sdl.ShowCursor(0)
+	C.ShowCursor(0)
+	defer C.ShowCursor(1)
 
 	check(d3d9.Init())
 	defer d3d9.Close()
