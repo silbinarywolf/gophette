@@ -126,15 +126,25 @@ func messageCallback(window C.HWND, message C.UINT, w C.WPARAM, l C.LPARAM) C.LR
 	}
 }
 
+func monitorSize(window C.HWND) (w, h int) {
+	monitor := C.MonitorFromWindow(window, C.MONITOR_DEFAULTTONEAREST)
+	var monitorInfo C.MONITORINFO
+	monitorInfo.cbSize = C.sizeof_MONITORINFO
+	C.GetMonitorInfo(monitor, &monitorInfo)
+	w = int(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left)
+	h = int(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top)
+	return
+}
+
 func main() {
 	// TODO enable VSync in D3D
 
 	windowHandle, err := windows.OpenWindow(windowProc, windowW, windowH)
 	check(err)
-	window_ := C.HWND(windowHandle)
+	window := C.HWND(windowHandle)
 
 	C.SetWindowText(
-		window_,
+		window,
 		(*C.WCHAR)(syscall.StringToUTF16Ptr("Gophette's Adventure")),
 	)
 
@@ -150,31 +160,15 @@ func main() {
 	check(err)
 	defer d3d.Release()
 
-	maxScreenW, maxScreenH := 0, 0
-	maxScreenW, maxScreenH = 1920, 1280 // TODO
-	//displayCount, err := sdl.GetNumVideoDisplays()
-	//check(err)
-	//for i := 0; i < displayCount; i++ {
-	//	var mode sdl.DisplayMode
-	//	err := sdl.GetCurrentDisplayMode(i, &mode)
-	//	if err == nil {
-	//		if int(mode.W) > maxScreenW {
-	//			maxScreenW = int(mode.W)
-	//		}
-	//		if int(mode.H) > maxScreenH {
-	//			maxScreenH = int(mode.H)
-	//		}
-	//	}
-	//}
-
+	screenW, screenH := monitorSize(window)
 	device, _, err := d3d.CreateDevice(
 		d3d9.ADAPTER_DEFAULT,
 		d3d9.DEVTYPE_HAL,
 		windowHandle,
 		d3d9.CREATE_HARDWARE_VERTEXPROCESSING,
 		d3d9.PRESENT_PARAMETERS{
-			BackBufferWidth:  uint(maxScreenW),
-			BackBufferHeight: uint(maxScreenH),
+			BackBufferWidth:  uint(screenW),
+			BackBufferHeight: uint(screenH),
 			BackBufferFormat: d3d9.FMT_A8R8G8B8,
 			BackBufferCount:  1,
 			Windowed:         true,
@@ -229,45 +223,6 @@ func main() {
 	//} else {
 	//	defer music.Free()
 	//	music.FadeIn(-1, 500)
-	//}
-
-	//for game.Running() {
-	//	for e := sdl.PollEvent(); e != nil; e = sdl.PollEvent() {
-	//		switch event := e.(type) {
-	//		case *sdl.KeyDownEvent:
-	//			if event.Repeat == 0 {
-	//				switch event.Keysym.Sym {
-	//				}
-	//			}
-	//		case *sdl.KeyUpEvent:
-	//			switch event.Keysym.Sym {
-	//			case sdl.K_F11:
-	//				if fullscreen {
-	//					window.SetFullscreen(0)
-	//				} else {
-	//					window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
-	//				}
-	//				fullscreen = !fullscreen
-	//			}
-	//		case *sdl.WindowEvent:
-	//			if event.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
-	//				width, height := int(event.Data1), int(event.Data2)
-	//				camera.setWindowSize(width, height)
-	//			}
-	//		}
-	//	}
-
-	//	now := time.Now()
-	//	dt := now.Sub(lastUpdate)
-	//	if dt > frameTime {
-	//		game.Update()
-	//		lastUpdate = now
-	//	}
-
-	//	check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
-	//	game.Render()
-	//	graphics.flush()
-	//	check(device.Present(nil, nil, nil, nil))
 	//}
 
 	var msg C.MSG
