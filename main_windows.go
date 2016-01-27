@@ -9,7 +9,6 @@ import (
 	"github.com/gonutz/mixer"
 	"github.com/gonutz/mixer/wav"
 	"github.com/veandco/go-sdl2/sdl"
-	"github.com/veandco/go-sdl2/sdl_image"
 	"image"
 	"image/draw"
 	"image/png"
@@ -30,11 +29,6 @@ func main() {
 
 	check(mixer.Init())
 	defer mixer.Close()
-
-	if img.Init(img.INIT_PNG)&img.INIT_PNG == 0 {
-		panic("error init png")
-	}
-	defer img.Quit()
 
 	window, err := sdl.CreateWindow(
 		"Gophette's Adventure",
