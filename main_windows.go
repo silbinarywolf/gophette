@@ -510,13 +510,17 @@ func (g *windowsGraphics) drawImageAt(img *textureImage, x, y int) {
 	y += dy
 
 	xf, yf := float32(x), float32(y)
+	// offset the pixels to correctly show the undistorted texture image, see
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb219690%28v=vs.85%29.aspx
+	// NOTE this only works if the backbuffer has the same size as the window
+	const pixOffset = -0.5
 	g.vertices = append(g.vertices,
-		xf, yf,
-		xf, yf+float32(img.height),
-		xf+float32(img.width), yf,
-		xf+float32(img.width), yf,
-		xf, yf+float32(img.height),
-		xf+float32(img.width), yf+float32(img.height),
+		xf+pixOffset, yf+pixOffset,
+		xf+pixOffset, yf+float32(img.height)+pixOffset,
+		xf+float32(img.width)+pixOffset, yf+pixOffset,
+		xf+float32(img.width)+pixOffset, yf+pixOffset,
+		xf+pixOffset, yf+float32(img.height)+pixOffset,
+		xf+float32(img.width)+pixOffset, yf+float32(img.height)+pixOffset,
 	)
 
 	g.textureCoords = append(g.textureCoords,
