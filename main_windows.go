@@ -213,9 +213,6 @@ func main() {
 		charIndex,
 	)
 
-	frameTime := time.Second / 65
-	lastUpdate := time.Now().Add(-frameTime)
-
 	// TODO bring back the music, ogg can not be loaded right now, maybe
 	// convert the file to wav and play that
 	//music, err := mix.LoadMUS("./rsc/background_music.ogg")
@@ -225,6 +222,11 @@ func main() {
 	//	defer music.Free()
 	//	music.FadeIn(-1, 500)
 	//}
+
+	toggleFullscreen(window)
+
+	frameTime := time.Second / 65
+	lastUpdate := time.Now().Add(-frameTime)
 
 	var msg C.MSG
 	C.PeekMessage(&msg, nil, 0, 0, C.PM_NOREMOVE)
