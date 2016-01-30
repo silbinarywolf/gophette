@@ -8,3 +8,4 @@ cd bin
 fatbin -f.dir=. -f.exe=gophette_exe -f.out=Gophette
 rm gophette_exe
 rm resources.blob
+cd ..

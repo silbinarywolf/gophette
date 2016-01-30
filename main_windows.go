@@ -317,7 +317,7 @@ type windowsAssetloader struct {
 }
 
 func (l *windowsAssetloader) loadResources() {
-	rscFile, err := os.Open("./resource/resources.blob")
+	rscFile, err := os.Open(resourceBlobFile)
 	check(err)
 	defer rscFile.Close()
 	l.resources, err = blob.Read(rscFile)
