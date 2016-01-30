@@ -77,16 +77,20 @@ func main() {
 		charIndex,
 	)
 
+	musicData, found := assetLoader.resources.GetByID("music")
+	if found {
+		musicRWOps := sdl.RWFromMem(unsafe.Pointer(&musicData[0]), len(musicData))
+		music, err := mix.LoadMUS_RW(musicRWOps, 0)
+		if err != nil {
+			fmt.Println("error loading music:", err)
+		} else {
+			defer music.Free()
+			music.FadeIn(-1, 500)
+		}
+	}
+
 	frameTime := time.Second / 65
 	lastUpdate := time.Now().Add(-frameTime)
-
-	music, err := mix.LoadMUS("./rsc/background_music.ogg")
-	if err != nil {
-		fmt.Println("error loading music:", err)
-	} else {
-		defer music.Free()
-		music.FadeIn(-1, 500)
-	}
 
 	for game.Running() {
 		for e := sdl.PollEvent(); e != nil; e = sdl.PollEvent() {
@@ -187,7 +191,7 @@ type sdlAssetLoader struct {
 }
 
 func (l *sdlAssetLoader) loadResources() error {
-	rscFile, err := os.Open("./resource/resources.blob")
+	rscFile, err := os.Open(resourceBlobFile)
 	if err != nil {
 		return err
 	}
