@@ -1,3 +1,5 @@
+// +build !sdl2
+
 package main
 
 /*

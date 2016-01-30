@@ -1,4 +1,4 @@
-// +build !windows
+// +build !windows sdl2
 
 package main
 

@@ -1,0 +1,1 @@
+go build -tags sdl2 -ldflags -H=windowsgui
