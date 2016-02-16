@@ -349,14 +349,10 @@ func (l *windowsAssetloader) loadResources() {
 		nil,
 	)
 	check(err)
-	check(texture.LockedSetData(
-		0,
-		nil,
-		d3d9.LOCK_DISCARD,
-		nrgba.Pix,
-		nrgba.Stride,
-		nrgba.Bounds().Dy(),
-	))
+	lockedRect, err := texture.LockRect(0, nil, d3d9.LOCK_DISCARD)
+	check(err)
+	lockedRect.SetAllBytes(nrgba.Pix, nrgba.Stride)
+	check(texture.UnlockRect(0))
 
 	l.textureAtlas = texture
 	l.textureAtlasBounds = nrgba.Bounds()
@@ -558,7 +554,10 @@ func (g *windowsGraphics) flush() {
 		check(err)
 		g.vertexBufferLength = len(g.vertices) * 4
 	}
-	check(g.vertexBuffer.LockedSetFloats(0, d3d9.LOCK_DISCARD, g.vertices))
+	vbMem, err := g.vertexBuffer.Lock(0, 0, d3d9.LOCK_DISCARD)
+	check(err)
+	vbMem.SetFloat32s(0, g.vertices)
+	check(g.vertexBuffer.Unlock())
 
 	if g.textureCoordBufferLength < len(g.textureCoords)*4 {
 		if g.textureCoordBufferLength > 0 {
@@ -575,7 +574,10 @@ func (g *windowsGraphics) flush() {
 		check(err)
 		g.textureCoordBufferLength = len(g.textureCoords) * 4
 	}
-	check(g.textureCoordBuffer.LockedSetFloats(0, d3d9.LOCK_DISCARD, g.textureCoords))
+	texMem, err := g.textureCoordBuffer.Lock(0, 0, d3d9.LOCK_DISCARD)
+	check(err)
+	texMem.SetFloat32s(0, g.textureCoords)
+	check(g.textureCoordBuffer.Unlock())
 
 	check(g.device.SetVertexShader(g.textureVS))
 	check(g.device.SetPixelShader(g.texturePS))
