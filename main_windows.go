@@ -116,8 +116,8 @@ func messageCallback(window C.HWND, message C.UINT, w C.WPARAM, l C.LPARAM) C.LR
 		return 1
 	case C.WM_SIZE:
 		if camera != nil {
-			width, height := lowWord(uint(l)), highWord(uint(l))
-			camera.setWindowSize(width, height)
+			windowW, windowH = lowWord(uint(l)), highWord(uint(l))
+			camera.setWindowSize(windowW, windowH)
 		}
 		return 1
 	case C.WM_DESTROY:
@@ -126,16 +126,6 @@ func messageCallback(window C.HWND, message C.UINT, w C.WPARAM, l C.LPARAM) C.LR
 	default:
 		return C.DefWindowProc(window, message, w, l)
 	}
-}
-
-func monitorSize(window C.HWND) (w, h int) {
-	monitor := C.MonitorFromWindow(window, C.MONITOR_DEFAULTTONEAREST)
-	var monitorInfo C.MONITORINFO
-	monitorInfo.cbSize = C.sizeof_MONITORINFO
-	C.GetMonitorInfo(monitor, &monitorInfo)
-	w = int(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left)
-	h = int(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top)
-	return
 }
 
 func main() {
@@ -163,15 +153,30 @@ func main() {
 	check(err)
 	defer d3d.Release()
 
-	screenW, screenH := monitorSize(window)
+	var maxScreenW, maxScreenH uint
+	for i := uint(0); i < d3d.GetAdapterCount(); i++ {
+		mode, err := d3d.GetAdapterDisplayMode(i)
+		if err == nil {
+			if mode.Width > maxScreenW {
+				maxScreenW = mode.Width
+			}
+			if mode.Height > maxScreenH {
+				maxScreenH = mode.Height
+			}
+		}
+	}
+	if maxScreenW == 0 || maxScreenH == 0 {
+		panic("no monitor detected")
+	}
+
 	device, _, err := d3d.CreateDevice(
 		d3d9.ADAPTER_DEFAULT,
 		d3d9.DEVTYPE_HAL,
 		windowHandle,
 		d3d9.CREATE_HARDWARE_VERTEXPROCESSING,
 		d3d9.PRESENT_PARAMETERS{
-			BackBufferWidth:  uint(screenW),
-			BackBufferHeight: uint(screenH),
+			BackBufferWidth:  maxScreenW,
+			BackBufferHeight: maxScreenH,
 			BackBufferFormat: d3d9.FMT_A8R8G8B8,
 			BackBufferCount:  1,
 			Windowed:         true,
@@ -244,10 +249,24 @@ func main() {
 				lastUpdate = now
 			}
 
-			check(device.Clear(nil, d3d9.CLEAR_TARGET, d3d9.ColorRGB(0, 95, 83), 1, 0))
+			check(device.SetViewport(
+				d3d9.VIEWPORT{0, 0, uint32(windowW), uint32(windowH), 0, 1},
+			))
+			check(device.Clear(
+				nil,
+				d3d9.CLEAR_TARGET,
+				d3d9.ColorRGB(0, 95, 83),
+				1,
+				0,
+			))
 			game.Render()
 			graphics.flush()
-			check(device.Present(nil, nil, nil, nil))
+			check(device.Present(
+				&d3d9.RECT{0, 0, int32(windowW), int32(windowH)},
+				nil,
+				nil,
+				nil,
+			))
 		}
 	}
 }
@@ -484,14 +503,6 @@ func (g *windowsGraphics) close() {
 	g.vertexDecl.Release()
 	g.texturePS.Release()
 	g.textureVS.Release()
-}
-
-func (graphics *windowsGraphics) FillRect(rect Rectangle, r, g, b, a uint8) {
-	// TODO
-	//check(graphics.renderer.SetDrawColor(r, g, b, a))
-	//rect = rect.MoveBy(graphics.camera.offset())
-	//sdlRect := sdl.Rect{int32(rect.X), int32(rect.Y), int32(rect.W), int32(rect.H)}
-	//graphics.renderer.FillRect(&sdlRect)
 }
 
 func (graphics *windowsGraphics) ClearScreen(r, g, b uint8) {
