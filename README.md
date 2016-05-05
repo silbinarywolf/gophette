@@ -26,9 +26,11 @@ You need a C compiler so if you do not have one, install [MinGW](http://sourcefo
 
 On Windows the game uses DirectX per default. The dependencies are installed automatically when you get the game.
 Run the following command:
+
 	go get github.com/gonutz/gophette
 
 and go into the source directory under %GOPATH%\src\github.com\gonutz\gophette. There run the Windows build script:
+
 	build_win.bat
 
 The resulting executable will be placed inside the gophette directory under bin\gophette.exe. It contains the resource data (sounds and images) and can be run on any Windows maching with Windows XP or later.
