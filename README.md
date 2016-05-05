@@ -38,14 +38,17 @@ Note however that if you build the game with a 64 bit compiler, it will only run
 ##Linux
 
 On Linux the game uses the SDL2 library, so make sure to install it by running:
+
 	sudo apt-get install libsdl2-dev
 	sudo apt-get install libsdl2-image-dev
 	sudo apt-get install libsdl2-mixer-dev
 
 After that you can get the game with:
+
 	go get github.com/gonutz/gophette
 
 Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+
 	./build_linux.sh
 
 The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
@@ -53,14 +56,17 @@ The resulting executable will be placed inside the gophette directory under bin/
 ##OS X
 
 On OS X the game uses the SDL2 library, so make sure to install it by running:
+
 	brew install sdl2
 	brew install --with-libvorbis sdl2_mixer
 	brew install sdl2_image
 
 After that you can get the game with:
+
 	go get github.com/gonutz/gophette
 
 Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+
 	./build_linux.sh
 
 The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
