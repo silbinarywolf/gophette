@@ -7,10 +7,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/gonutz/blob"
+	"github.com/gonutz/payload"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/sdl_image"
 	"github.com/veandco/go-sdl2/sdl_mixer"
-	"os"
 	"runtime"
 	"time"
 	"unsafe"
@@ -195,12 +195,14 @@ type sdlAssetLoader struct {
 }
 
 func (l *sdlAssetLoader) loadResources() error {
-	rscFile, err := os.Open(resourceBlobFile)
+	resourceData, err := payload.Read()
 	if err != nil {
 		return err
 	}
-	defer rscFile.Close()
-	l.resources, err = blob.Read(rscFile)
+	l.resources, err = blob.Read(bytes.NewBuffer(resourceData))
+	if err != nil {
+		return err
+	}
 
 	// load the texture atlas
 	atlas, found := l.resources.GetByID("atlas")
