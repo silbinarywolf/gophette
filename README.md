@@ -18,26 +18,52 @@ Here is a video of the gameplay:
 
 # Build
 
-Make sure you have the [SDL2 Go wrapper](https://github.com/veandco/go-sdl2) installed.
+**Note** that you need a C compiler to build this game on all operating systems.
 
-To install under OS X you can do this:
+##Windows
 
+You need a C compiler so if you do not have one, install [MinGW](http://sourceforge.net/projects/mingw/files/).
+
+On Windows the game uses DirectX per default. The dependencies are installed automatically when you get the game.
+Run the following command:
+    go get github.com/gonutz/gophette
+
+and go into the source directory under %GOPATH%\src\github.com\gonutz\gophette. There run the Windows build script:
+	build_win.bat
+
+The resulting executable will be placed inside the gophette directory under bin\gophette.exe. It contains the resource data (sounds and images) and can be run on any Windows maching with Windows XP or later.
+
+Note however that if you build the game with a 64 bit compiler, it will only run on 64 bit Windows, while 32 bit executables run on both 32 and 64 bit Windows.
+
+##Linux
+
+On Linux the game uses the SDL2 library, so make sure to install it by running:
+    sudo apt-get install libsdl2-dev
+    sudo apt-get install libsdl2-image-dev
+    sudo apt-get install libsdl2-mixer-dev
+
+After that you can get the game with:
+    go get github.com/gonutz/gophette
+
+Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+    ./build_linux.sh
+
+The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
+
+##OS X
+
+On OS X the game uses the SDL2 library, so make sure to install it by running:
     brew install sdl2
-    brew install sdl2_ttf
     brew install --with-libvorbis sdl2_mixer
     brew install sdl2_image
-    go get -v github.com/veandco/go-sdl2/sdl
-    go get -v github.com/veandco/go-sdl2/sdl_image
-    go get -v github.com/veandco/go-sdl2/sdl_mixer
-    go get -v github.com/veandco/go-sdl2/sdl_ttf
 
-You need to have a C compiler installed for that so if you are on Windows you need [MinGW](http://sourceforge.net/projects/mingw/files/) installed as well.
+After that you can get the game with:
+    go get github.com/gonutz/gophette
 
-After installing these you should be able to go get it:
+Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+    ./build_linux.sh
 
-    go get github.com/gophergala2016/gophette
-
-and be ready to play.
+The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
 
 # About
 
