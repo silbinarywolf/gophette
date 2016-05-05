@@ -29,11 +29,11 @@ Run the following command:
 
 	go get github.com/gonutz/gophette
 
-and go into the source directory under %GOPATH%\src\github.com\gonutz\gophette. There run the Windows build script:
+and go into the source directory under %GOPATH%\src\github.com\gonutz\gophette. Run the Windows build script:
 
 	build_win.bat
 
-The resulting executable will be placed inside the gophette directory under bin\gophette.exe. It contains the resource data (sounds and images) and can be run on any Windows maching with Windows XP or later.
+The resulting executable will be placed inside the gophette directory under bin\gophette.exe. The executable is the only file needed, it contains the resource data (sounds and images) and can be run on any Windows maching with Windows XP or later.
 
 Note however that if you build the game with a 64 bit compiler, it will only run on 64 bit Windows, while 32 bit executables run on both 32 and 64 bit Windows.
 
@@ -49,11 +49,11 @@ After that you can get the game with:
 
 	go get github.com/gonutz/gophette
 
-Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. From there, run the Linux build script:
 
 	./build_linux.sh
 
-The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
+The resulting executable will be placed inside the gophette directory under bin/gophette. The executable is the only file needed, it contains the resource data (sounds and images) and can be run from any directory.
 
 ##OS X
 
@@ -67,11 +67,11 @@ After that you can get the game with:
 
 	go get github.com/gonutz/gophette
 
-Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. There run the Linux build script:
+Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. From there, run the Linux build script:
 
 	./build_linux.sh
 
-The resulting executable will be placed inside the gophette directory under bin/gophette.exe. It contains the resource data (sounds and images) and can be run from any directory.
+The resulting executable will be placed inside the gophette directory under bin/gophette. The executable is the only file needed, it contains the resource data (sounds and images) and can be run from any directory.
 
 # About
 
