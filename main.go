@@ -181,6 +181,10 @@ func (s *wavSound) PlayOnce() {
 	s.chunk.Play(-1, 0)
 }
 
+func (s *wavSound) Length() time.Duration {
+	return time.Millisecond * time.Duration(s.chunk.LengthInMs())
+}
+
 type sdlAssetLoader struct {
 	resources    *blob.Blob
 	camera       *windowCamera
