@@ -152,9 +152,17 @@ func main() {
 	addImage(scaleImageToFactor(intro.GetLayerByName("pc 2"), 0.67), "intro pc 2")
 	addImage(scaleImageToFactor(intro.GetLayerByName("gophette"), 0.67), "intro gophette")
 
-	music, err := ioutil.ReadFile("./background_music.ogg")
-	check(err)
-	resources.Append("music", music)
+	{
+		music, err := ioutil.ReadFile("./background_music.ogg")
+		check(err)
+		resources.Append("music", music)
+	}
+
+	{
+		music, err := ioutil.ReadFile("./background_music.wav")
+		check(err)
+		resources.Append("music_wav", music)
+	}
 
 	for _, sound := range []string{
 		"win",

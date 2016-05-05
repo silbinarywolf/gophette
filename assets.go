@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 type Graphics interface {
 	ClearScreen(r, g, b uint8)
 }
@@ -11,6 +13,7 @@ type Image interface {
 
 type Sound interface {
 	PlayOnce()
+	Length() time.Duration
 }
 
 type AssetLoader interface {

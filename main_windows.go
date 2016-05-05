@@ -18,10 +18,10 @@ import (
 	"github.com/gonutz/gophette/windows"
 	"github.com/gonutz/mixer"
 	"github.com/gonutz/mixer/wav"
+	"github.com/gonutz/payload"
 	"image"
 	"image/draw"
 	"image/png"
-	"os"
 	"runtime"
 	"syscall"
 	"time"
@@ -220,15 +220,13 @@ func main() {
 		charIndex,
 	)
 
-	// TODO bring back the music, ogg can not be loaded right now, maybe
-	// convert the file to wav and play that
-	//music, err := mix.LoadMUS("./rsc/background_music.ogg")
-	//if err != nil {
-	//	fmt.Println("error loading music:", err)
-	//} else {
-	//	defer music.Free()
-	//	music.FadeIn(-1, 500)
-	//}
+	music := assetLoader.LoadSound("music_wav")
+	go func() {
+		for {
+			music.PlayOnce()
+			time.Sleep(music.Length() + 5*time.Second)
+		}
+	}()
 
 	toggleFullscreen(window)
 
@@ -285,6 +283,10 @@ func (s *wavSound) PlayOnce() {
 	s.source.PlayOnce()
 }
 
+func (s *wavSound) Length() time.Duration {
+	return s.source.Length()
+}
+
 type d3dImage struct {
 	camera *windowCamera
 }
@@ -336,10 +338,9 @@ type windowsAssetloader struct {
 }
 
 func (l *windowsAssetloader) loadResources() {
-	rscFile, err := os.Open(resourceBlobFile)
+	resourceData, err := payload.Read()
 	check(err)
-	defer rscFile.Close()
-	l.resources, err = blob.Read(rscFile)
+	l.resources, err = blob.Read(bytes.NewBuffer(resourceData))
 
 	// load the texture atlas
 	atlas, found := l.resources.GetByID("atlas")
