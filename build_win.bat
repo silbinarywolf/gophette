@@ -1,5 +1,4 @@
 if not exist bin md bin
-go build -ldflags -H=windowsgui -o bin\gophette_exe.exe
+go build -ldflags -H=windowsgui -o bin\gophette.exe
 go get -u github.com/gonutz/payload/cmd/payload
-payload -exe=bin\gophette_exe.exe -data=resource\resources.blob -output=bin\gophette.exe
-del bin\gophette_exe.exe
+payload -exe=bin\gophette.exe -data=resource\resources.blob
