@@ -18,26 +18,21 @@ Here is a video of the gameplay:
 
 # Build
 
-**Note** that you need a C compiler to build this game on all operating systems.
+## Windows
 
-##Windows
-
-You need a C compiler so if you do not have one, install [MinGW](http://sourceforge.net/projects/mingw/files/).
-
-On Windows the game uses DirectX per default. The dependencies are installed automatically when you get the game.
-Run the following command:
+On Windows the game uses DirectX by default. The dependencies are installed automatically when you get the game.
+Run the following commands:
 
 	go get github.com/gonutz/gophette
-
-and go into the source directory under %GOPATH%\src\github.com\gonutz\gophette. Run the Windows build script:
-
+	cd %GOPATH%\src\github.com\gonutz\gophette
 	build_win.bat
+	bin\gophette.exe
 
 The resulting executable will be placed inside the gophette directory under bin\gophette.exe. The executable is the only file needed, it contains the resource data (sounds and images) and can be run on any Windows maching with Windows XP or later.
 
-Note however that if you build the game with a 64 bit compiler, it will only run on 64 bit Windows, while 32 bit executables run on both 32 and 64 bit Windows.
+Note that the *level editor* only works with SDL2, so if you want to change the level you have to have a [C Compiler](http://sourceforge.net/projects/mingw/files/) and [the SDL2 library](https://www.libsdl.org/download-2.0.php) installed.
 
-##Linux
+## Linux
 
 On Linux the game uses the SDL2 library, so make sure to install it by running:
 
@@ -55,7 +50,7 @@ Then go into the source directory under $GOPATH/src/github.com/gonutz/gophette. 
 
 The resulting executable will be placed inside the gophette directory under bin/gophette. The executable is the only file needed, it contains the resource data (sounds and images) and can be run from any directory.
 
-##OS X
+## OS X
 
 On OS X the game uses the SDL2 library, so make sure to install it by running:
 
