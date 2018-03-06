@@ -635,7 +635,7 @@ func (g *windowsGraphics) flush() {
 		0,
 		-1,
 		1,
-	)
+	).Transposed()
 	check(g.device.SetVertexShaderConstantF(0, mvp[:]))
 
 	check(g.device.BeginScene())
