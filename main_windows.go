@@ -291,12 +291,20 @@ func openWindow(
 		return 0, errors.New("RegisterClassEx failed")
 	}
 
+	windowStyle := uint(w32.WS_OVERLAPPEDWINDOW | w32.WS_VISIBLE)
+	windowRect := w32.RECT{
+		Left:   0,
+		Top:    0,
+		Right:  int32(width),
+		Bottom: int32(height),
+	}
+	w32.AdjustWindowRect(&windowRect, windowStyle, false)
 	window := w32.CreateWindowEx(
 		0,
 		syscall.StringToUTF16Ptr(className),
 		nil,
-		w32.WS_OVERLAPPEDWINDOW|w32.WS_VISIBLE,
-		x, y, width, height,
+		windowStyle,
+		x, y, int(windowRect.Width()), int(windowRect.Height()),
 		0, 0, 0, nil,
 	)
 	if window == 0 {
